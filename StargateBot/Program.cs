@@ -98,7 +98,7 @@ namespace StargateBot
                 await context.Channel.SendMessageAsync(result.ErrorReason);
         }
 
-
+         
         private Task Log(LogMessage msg)
         {
             Console.WriteLine($"{DateTime.Now.ToString("dd/MM/yyyy")} {msg.ToString()}"); // Log our logs to the console

@@ -104,7 +104,7 @@ namespace StargateBot
                 {
                     switch (thecmd)
                     {
-                        case "test":
+                        case "test": 
                             await Context.Channel.SendMessageAsync($"Admin Command Test");
                             break; 
 
