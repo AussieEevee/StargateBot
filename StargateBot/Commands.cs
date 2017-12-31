@@ -106,7 +106,7 @@ namespace StargateBot
                     {
                         case "test":
                             await Context.Channel.SendMessageAsync($"Admin Command Test");
-                            break;
+                            break; 
 
                         case "reloadmemes":
                             Console.WriteLine("Reload Meme directory requested.");
