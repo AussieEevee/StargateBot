@@ -25,42 +25,58 @@ namespace StargateBot
 
         public async Task MainAsync()
         {
-            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
-
-            _client = new DiscordSocketClient(); //Create the discord client.
-
-            _client.Log += Log; // log important stuff
-            _commands = new CommandService();
-            
             if (System.Diagnostics.Debugger.IsAttached)
             {
                 Bot.version = $"{Bot.version}.debug"; // Set versioning when in debug mode
+                Global.debugmode = true;
             }
+
+            Program.Debug("Oberoth debug mode active.");
+
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+
+            Program.Debug("Creating new discord socket...");
+            _client = new DiscordSocketClient(); //Create the discord client.
+
+            Program.Debug("Attaching log process...");
+            _client.Log += Log; // log important stuff
+            _commands = new CommandService();
+            
+           
             string ver = Bot.version;
 
             await Log($"{Global.appname} v{ver}");
             //Console.WriteLine($"{Global.appname} v{ver}");
             Console.Title = $"{Global.appname} v{ver}";
 
+            Program.Debug("Creating services...");
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
                 .BuildServiceProvider();
-
+            Program.Debug("Installing commands.");
             await InstallCommandsAsync(); // Install the command service
+            Program.Debug("Token?");
             string token = Global.Token; // Our secret little token that is the source of all our power.
+            Program.Debug("Log in to Discord");
             await _client.LoginAsync(TokenType.Bot, token); // We should login, shouldn't we?
+            Program.Debug("Start the client");
             await _client.StartAsync(); //Start the client.
+            Program.Debug("Set the game");
             await _client.SetGameAsync($"{Bot.name} v{Bot.version}"); // Set the running game to our current version.
             
             
 
             _client.UserJoined += async (s) =>
             {
-                if(s.IsBot == false)
+                Program.Debug("A user has joined.");
+                if (s.IsBot == false)
                 {
+                    Program.Debug("User is not a bot.");
                     Console.WriteLine($"{DateTime.Now.ToString("dd/MM/yyyy")} {DateTime.Now.ToString("HH:mm:ss")} New user has joined: {s.Username}"); // Log to the console that someone joined us.
                     var channel = s.Guild.GetTextChannel(Global.Channels.welcome);
+
+                    Program.Debug("Getting random seed.");
                     Random rnd = new Random();
                     int rngrole = rnd.Next(1, 6);
                     
@@ -105,24 +121,18 @@ namespace StargateBot
                         Runtime.therole = "Asgard";
                         await (user as IGuildUser).AddRoleAsync(role);
                     }
+                    Program.Debug("Sending join message");
                     await channel.SendMessageAsync($"We are receiving a GDO transmission. It's {s.Mention}. Opening the iris.\n\nWelcome to our little corner of the ~~galaxy~~ internet, {s.Username}.\n\nWe would love to know a little about you. How long have you been a Stargate fan? What is your favourite episode? Who is your favourite character?\n\nI have assigned you the {Runtime.therole} role. If you wish to change your role, please use the !role command.\n\nIf you would like to participate in our drawing events, please send the command \"!drawing\".\n\nIf you would like to participate in our roleplaying events, please send the command \"!roleplay\".\n\nPlease be sure to check out #the-rules and enjoy your stay."); // Announce them to the world
                     Runtime.therole = "";
                 }
                 else
                 {
+                    Program.Debug("Bot detected.");
                     Console.WriteLine($"{DateTime.Now.ToString("dd/MM/yyyy")} {DateTime.Now.ToString("HH:mm:ss")} New bot user has joined: {s.Username}"); // Log to the console that someone joined us.
                 }
                 
 
             };
-
-           /* _client.GuildAvailable += async (s) =>
-            {
-                //var s = _client.GetGuild(Global.GuildID);
-                
-                var channel = s.GetTextChannel(Global.Channels.adminlog);
-                //await channel.SendMessageAsync($"{Bot.name} version {Bot.version} is online and operational. I am ready to assist you.");
-            }; */
 
             _client.UserBanned += async (s, r) =>
             {
@@ -136,16 +146,12 @@ namespace StargateBot
                 await channel.SendMessageAsync($"{s.Username} has been unbanned.");
             };
 
-            /* _client.MessageReceived += async (s) =>
-            {
-               //Experience.ProcessMessage(s);
-            }; */
-
             _client.UserLeft += async (s) =>
             {
+                Program.Debug("Oh noes! User has left!");
                 if (s.IsBot == false)
                 {
-
+                    Program.Debug("User is not a bot. Sending message.");
                     Console.WriteLine($"{DateTime.Now.ToString("dd/MM/yyyy")} {DateTime.Now.ToString("HH:mm:ss")} User left: {s.Username}"); // Why'd they leave? :(
                     var channel = s.Guild.GetTextChannel(Global.Channels.welcome);
                     await channel.SendMessageAsync($"Chevron seven... Locked. Wormhole established.\n\n{s.Username} has left the server. I hope they return to Stargate Command in the future."); // Say good bye to our comrade.
@@ -163,14 +169,16 @@ namespace StargateBot
         }
         public async Task InstallCommandsAsync()
         {
+            Program.Debug("Installing commands.");
             // Hook the MessageReceived Event into our Command Handler
             _client.MessageReceived += HandleCommandAsync;
             // Discover all of the commands in this assembly and load them.
-            await _commands.AddModulesAsync(Assembly.GetEntryAssembly());
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(),_services);
         }
 
         private async Task HandleCommandAsync(SocketMessage messageParam)
         {
+            Program.Debug($"Message detected: {messageParam}");
             // Don't process the command if it was a System Message
             var message = messageParam as SocketUserMessage;
             if (message == null) return;
@@ -178,14 +186,17 @@ namespace StargateBot
             int argPos = 0;
             // Determine if the message is a command, based on if it starts with '!' or a mention prefix
             if (!(message.HasCharPrefix('!', ref argPos) || message.HasMentionPrefix(_client.CurrentUser, ref argPos))) return;
+            Program.Debug($"Message is command.");
             // Create a Command Context
             var context = new SocketCommandContext(_client, message);
             // Execute the command. (result does not indicate a return value, 
             // rather an object stating if the command executed successfully)
+            Program.Debug($"Instructing system to execute command.");
             var result = await _commands.ExecuteAsync(context, argPos, _services);
 
             if (!result.IsSuccess)
             {
+                Program.Debug($"Command failed.");
                 Console.WriteLine($"Faulty command detected: {context.User.Username} sent \"{messageParam}\": {result.ErrorReason}");
             }
             //await context.Channel.SendMessageAsync(result.ErrorReason);
@@ -196,7 +207,7 @@ namespace StargateBot
         {
             string LogMessage = ($"{DateTime.Now.ToString("dd/MM/yyyy")} {msg.ToString()}");
             File.AppendAllText(Global.logfile, LogMessage + Environment.NewLine);
-            AdminLog(_client, msg);
+            //AdminLog(_client, msg);
             Console.WriteLine(LogMessage); // Log our logs to the console
             return Task.CompletedTask;
         }
@@ -206,7 +217,7 @@ namespace StargateBot
         {
             string LogMessage = ($"{DateTime.Now.ToString("dd/MM/yyyy")} {msg.ToString()}");
             File.AppendAllText(Global.logfile, LogMessage + Environment.NewLine);
-            AdminLog(_client, msg.ToString());
+            //AdminLog(_client, msg.ToString());
             Console.WriteLine(LogMessage); // Log our logs to the console
             return Task.CompletedTask;
         }
@@ -216,14 +227,13 @@ namespace StargateBot
             await Log("StargateBot exit command received. Closing program." + Environment.NewLine + Environment.NewLine);
         }
 
-        private static async Task AdminLog(IDiscordClient client, string msg)
+        private static void Debug(string msg)
         {
-            //var channel = client.GetGuildAsync(Global.GuildID).Result.GetTextChannelAsync(395980764250112000);
-           // await channel.Result.SendMessageAsync(msg);
-
+            if(Global.debugmode == true)
+            {
+                Console.WriteLine($"{DateTime.Now.ToString("dd/MM/yyyy")} Debug: " + msg);
+            }
         }
-
-
     };
 
     

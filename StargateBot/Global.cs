@@ -16,6 +16,7 @@ namespace StargateBot
     {
         public static int Number { get; set; }
         public static string[] memes = Directory.GetFiles(@"Memes/");
+        public static bool debugmode = false;
         
         
         public static string appname = "StargateBot";
