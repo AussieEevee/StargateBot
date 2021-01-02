@@ -66,7 +66,7 @@ namespace StargateBot
             await _client.SetGameAsync($"{Bot.name} v{Bot.version}"); // Set the running game to our current version.
             
             
-
+            
             _client.UserJoined += async (s) =>
             {
                 Program.Debug("A user has joined.");
